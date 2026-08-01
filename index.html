@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Baseball IQ &mdash; Know Your Job on Every Play</title>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<canvas id="fx" aria-hidden="true"></canvas>
+
+<header class="topbar">
+  <div class="brand">
+    <svg class="brand-ball" viewBox="0 0 100 100" role="img" aria-label="Baseball" focusable="false">
+      <defs>
+        <radialGradient id="gBrandBall" cx="36%" cy="30%" r="75%">
+          <stop offset="0%"   stop-color="#ffffff"/>
+          <stop offset="65%"  stop-color="#f2f5f8"/>
+          <stop offset="100%" stop-color="#d8e0e9"/>
+        </radialGradient>
+      </defs>
+
+      <circle cx="50" cy="50" r="47" fill="url(#gBrandBall)" stroke="#c2ccd8" stroke-width="1.5"/>
+
+      <!-- the two seams, bowing toward the edges like parentheses -->
+      <path d="M34,13 Q11,50 34,87" fill="none" stroke="#d0402f" stroke-width="2.4" stroke-linecap="round"/>
+      <path d="M66,13 Q89,50 66,87" fill="none" stroke="#d0402f" stroke-width="2.4" stroke-linecap="round"/>
+
+      <!-- stitches, drawn perpendicular to each seam -->
+      <g stroke="#d0402f" stroke-width="2.1" stroke-linecap="round">
+        <line x1="24.0" y1="22.3" x2="32.3" y2="25.9"/>
+        <line x1="20.0" y1="34.1" x2="28.7" y2="36.3"/>
+        <line x1="18.1" y1="46.0" x2="27.1" y2="46.6"/>
+        <line x1="18.1" y1="54.0" x2="27.1" y2="53.4"/>
+        <line x1="20.0" y1="65.9" x2="28.7" y2="63.7"/>
+        <line x1="24.0" y1="77.7" x2="32.3" y2="74.1"/>
+
+        <line x1="76.0" y1="22.3" x2="67.7" y2="25.9"/>
+        <line x1="80.0" y1="34.1" x2="71.3" y2="36.3"/>
+        <line x1="81.9" y1="46.0" x2="72.9" y2="46.6"/>
+        <line x1="81.9" y1="54.0" x2="72.9" y2="53.4"/>
+        <line x1="80.0" y1="65.9" x2="71.3" y2="63.7"/>
+        <line x1="76.0" y1="77.7" x2="67.7" y2="74.1"/>
+      </g>
+    </svg>
+    <div>
+      <h1>Baseball <span>IQ</span></h1>
+      <p>Know your job before the ball is hit.</p>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="score" id="score" hidden>
+      <span class="score-label">Correct</span>
+      <span class="score-value"><b id="score-correct">0</b> / <span id="score-asked">0</span></span>
+    </div>
+    <button class="btn btn-switch" id="btn-change-position" hidden
+            title="Pick a different position — you can switch any time">
+      <span class="switch-icon" aria-hidden="true">&#8646;</span>
+      <span>Change position</span>
+    </button>
+  </div>
+</header>
+
+<!-- ============ SCREEN 1: POSITION PICKER ============ -->
+<main id="screen-select" class="screen">
+  <div class="select-intro">
+    <h2>Pick the position you want to master</h2>
+    <p>You&rsquo;ll watch the play develop, then get stopped mid-action and asked what that fielder is
+       supposed to do. Get it right and the crowd goes wild.</p>
+  </div>
+  <div class="position-grid" id="position-grid"></div>
+  <p class="select-note" id="select-note"></p>
+</main>
+
+<!-- ============ SCREEN 2: THE PLAY ============ -->
+<main id="screen-play" class="screen" hidden>
+  <div class="play-layout">
+
+    <!-- ---- Field ---- -->
+    <section class="field-wrap">
+      <div class="field-header">
+        <div>
+          <span class="chip chip-pos" id="chip-position">2B</span>
+          <span class="scenario-title" id="scenario-title"></span>
+        </div>
+        <div class="field-header-right">
+          <span class="chip chip-paused" id="chip-paused" hidden>&#10073;&#10073; Paused &mdash; your call</span>
+          <button class="btn btn-replay" id="btn-replay-animation" type="button" hidden
+                  title="Watch the play again from the start (R)">
+            <span class="replay-icon" aria-hidden="true">&#8635;</span>
+            <span id="btn-replay-label">Replay animation</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="field-frame">
+        <svg id="field" viewBox="0 0 800 700" role="img" aria-label="Baseball field diagram">
+          <defs>
+            <radialGradient id="gGrass" cx="50%" cy="85%" r="85%">
+              <stop offset="0%"  stop-color="#3f8f4a"/>
+              <stop offset="60%" stop-color="#2f7a3d"/>
+              <stop offset="100%" stop-color="#266633"/>
+            </radialGradient>
+            <linearGradient id="gDirt" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#c8905a"/>
+              <stop offset="100%" stop-color="#b07a49"/>
+            </linearGradient>
+            <clipPath id="fairClip">
+              <path d="M400,620 L60,280 A372.7,372.7 0 0 1 740,280 Z"/>
+            </clipPath>
+            <filter id="softGlow" x="-70%" y="-70%" width="240%" height="240%">
+              <feGaussianBlur stdDeviation="6" result="b"/>
+              <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+
+          <!-- foul territory -->
+          <rect x="0" y="0" width="800" height="700" fill="#1e5b2c"/>
+          <!-- fair territory grass -->
+          <g clip-path="url(#fairClip)">
+            <rect x="0" y="0" width="800" height="700" fill="url(#gGrass)"/>
+            <!-- mow stripes -->
+            <g opacity=".07" fill="#ffffff">
+              <path d="M400,620 L120,340 L215,245 L400,620Z"/>
+              <path d="M400,620 L400,60 L495,60 L400,620Z"/>
+              <path d="M400,620 L585,245 L680,340 L400,620Z"/>
+            </g>
+            <!-- infield dirt. r=215 leaves visible grass between the infield and
+                 the shallow-outfield spots, since the outfield is drawn compressed. -->
+            <circle cx="400" cy="470" r="215" fill="url(#gDirt)"/>
+          </g>
+
+          <!-- infield grass -->
+          <polygon points="400,598 537,465 400,332 263,465" fill="#3a8747"/>
+
+          <!-- warning track + fence -->
+          <path d="M400,620 L60,280 A372.7,372.7 0 0 1 740,280 Z"
+                fill="none" stroke="#a9743f" stroke-width="14" opacity=".55"/>
+          <path d="M60,280 A372.7,372.7 0 0 1 740,280"
+                fill="none" stroke="#14361f" stroke-width="7" stroke-linecap="round"/>
+
+          <!-- foul lines -->
+          <line x1="400" y1="620" x2="62" y2="282" stroke="#f4f7f2" stroke-width="3" opacity=".85"/>
+          <line x1="400" y1="620" x2="738" y2="282" stroke="#f4f7f2" stroke-width="3" opacity=".85"/>
+
+          <!-- mound -->
+          <circle cx="400" cy="473" r="34" fill="#d09a63"/>
+          <rect x="392" y="469" width="16" height="6" rx="2" fill="#fff" opacity=".9"/>
+
+          <!-- bases -->
+          <g stroke="#d8dbd4" stroke-width="1.5">
+            <rect x="547" y="457" width="17" height="17" fill="#fff" transform="rotate(45 555.5 465.5)"/>
+            <rect x="392" y="302" width="17" height="17" fill="#fff" transform="rotate(45 400.5 310.5)"/>
+            <rect x="237" y="457" width="17" height="17" fill="#fff" transform="rotate(45 245.5 465.5)"/>
+          </g>
+          <polygon points="392,612 408,612 408,621 400,629 392,621" fill="#fff" stroke="#d8dbd4"/>
+
+          <!-- dynamic layers -->
+          <g id="layer-routes"></g>
+          <g id="layer-runners"></g>
+          <g id="layer-fielders"></g>
+          <g id="layer-ball" hidden>
+            <ellipse id="ball-shadow" cx="400" cy="620" rx="7" ry="4" fill="#000" opacity=".3"/>
+            <circle id="ball" cx="400" cy="620" r="8" fill="#fff" stroke="#c9402f" stroke-width="1.6"/>
+          </g>
+        </svg>
+      </div>
+
+      <p class="field-caption" id="field-caption">&nbsp;</p>
+    </section>
+
+    <!-- ---- Coaching panel ---- -->
+    <aside class="panel">
+      <div class="panel-card situation">
+        <h3>The situation</h3>
+        <ul class="sit-list" id="sit-list"></ul>
+        <p class="sit-desc" id="sit-desc"></p>
+      </div>
+
+      <div class="panel-card question" id="question-card" hidden>
+        <h3 id="question-prompt">&nbsp;</h3>
+        <div class="options" id="options"></div>
+        <p class="feedback" id="feedback" hidden></p>
+      </div>
+
+      <div class="panel-card outcome" id="outcome-card" hidden>
+        <h3 id="outcome-title">Play result</h3>
+        <p id="outcome-text"></p>
+        <p class="coach-note" id="outcome-coach"></p>
+      </div>
+
+      <div class="panel-actions" id="panel-actions">
+        <button class="btn btn-primary" id="btn-next" hidden>Next scenario</button>
+        <button class="btn btn-ghost" id="btn-replay" hidden>Try this play again</button>
+      </div>
+    </aside>
+  </div>
+</main>
+
+<footer class="footer">
+  <span>Baseball IQ &mdash; scenarios live in <code>js/scenarios-&lt;position&gt;.js</code></span>
+</footer>
+
+<!-- shared field data first, then one scenario file per position -->
+<script src="js/field-data.js"></script>
+<script src="js/scenarios-2b.js"></script>
+<script src="js/scenarios-ss.js"></script>
+<script src="js/scenarios-p.js"></script>
+<script src="js/scenarios-1b.js"></script>
+<script src="js/scenarios-3b.js"></script>
+<script src="js/scenarios-c.js"></script>
+<script src="js/scenarios-lf.js"></script>
+<script src="js/scenarios-cf.js"></script>
+<script src="js/scenarios-rf.js"></script>
+<script src="js/fireworks.js"></script>
+<script src="js/field.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
