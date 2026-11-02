@@ -1,9 +1,14 @@
 # Baseball IQ
 
-A drill site that teaches players their responsibilities at each position. Pick a position, watch
-the play develop on a 2D field, get stopped mid-action and answer what that fielder is supposed to
-do. Right answer → green + fireworks. Wrong → try again; wrong twice → the correct answer is
+A drill site that teaches young players their responsibilities at each position. Pick a position,
+watch the play develop on a 2D field, get stopped mid-action and answer what that fielder is supposed
+to do. Right answer → green + fireworks. Wrong → try again; wrong twice → the correct answer is
 revealed with an explanation.
+
+Written for **Little League, roughly ages 8–12**. That audience decides what earns a scenario and how
+it is worded — see `docs/scenario-playbook.md` before writing any new ones.
+
+**119 scenarios across all nine positions.**
 
 ## Running it
 
@@ -13,17 +18,31 @@ No build step, no server needed. Double-click `index.html`, or:
 start .\index.html
 ```
 
+## Checking your work
+
+```powershell
+node tools\validate-scenarios.js
+```
+
+Run it after touching any scenario file. It picks up `js/scenarios-*.js` automatically, so a new
+position needs no wiring. It catches the mistakes that are invisible when reading the code but
+obvious on screen — a ball landing in foul territory, text saying "to your right" when the ball goes
+left, a runner frozen mid-baseline, a throw that ties the runner on a play called an out, the wrong
+fielder taking the cut. Two foul-line warnings are expected and correct.
+
 ## Files
 
 | File | What it holds |
 |---|---|
-| `index.html` | Page shell + the static SVG field |
+| `index.html` | Page shell, the static SVG field, and the `<script>` tags that load each scenario file |
 | `css/styles.css` | All styling |
 | `js/field-data.js` | Field spots (`SPOTS`), the nine positions, and the empty `SCENARIOS` registry |
-| `js/scenarios-2b.js` | **All** second-base scenarios (48), grouped by base situation |
+| `js/scenarios-<pos>.js` | One file per position: `p`, `c`, `1b`, `2b`, `3b`, `ss`, `lf`, `cf`, `rf` |
 | `js/field.js` | Draws fielders/runners, animates the ball, routes and coverage |
 | `js/fireworks.js` | Particle burst on a correct answer |
-| `js/app.js` | Screen flow + the scenario timeline engine |
+| `js/app.js` | Screen flow, the scenario timeline engine, and quiz scoring |
+| `tools/validate-scenarios.js` | Site-wide correctness checks (see above) |
+| `docs/scenario-playbook.md` | How we decide what scenarios a position needs, and the coaching rules that must stay consistent between positions |
 
 ## Adding scenarios
 
@@ -31,14 +50,12 @@ start .\index.html
 its scenarios to the shared registry declared in `field-data.js`. Within a file, group scenarios into
 sections by base situation — bases empty, runner on first, runners on first and second, and so on.
 
-To add a position:
+All nine files already exist, so adding a scenario means appending to the right one and re-running the
+validator. If you ever add a tenth file, give it a `<script>` tag in `index.html` after
+`js/field-data.js`; everything else picks it up on its own.
 
-1. Create `js/scenarios-ss.js` (or `-1b`, `-3b`, `-c`, `-p`, `-lf`, `-cf`, `-rf`)
-2. Start it with `SCENARIOS.push(` … `);`
-3. Add a `<script>` tag for it in `index.html`, after `js/field-data.js`
-
-Positions with zero scenarios show as "Coming soon" on the picker automatically, so you can add them
-one at a time and the site keeps working the whole way.
+Positions with zero scenarios show as "Coming soon" on the picker automatically, so a half-finished
+position never breaks the site.
 
 ```js
 {
@@ -69,6 +86,7 @@ one at a time and the site keeps working the whole way.
 | Type | Does |
 |---|---|
 | `ball` | Batted ball. `kind: 'ground'` (hops), `'fly'` (high arc), `'line'` (flat arc) |
+| | `kind: 'pitch'` — never batted (a passed ball or wild pitch). `kind: 'foul'` — a foul pop-up. Both are exempt from the validator's fair-territory check, because both legitimately end up outside the lines. |
 | `throw` | Thrown ball — arcs, and draws a solid gold route line |
 | | `ballArrivesAt: 0.7` makes the ball finish its flight in 70% of the step while runners keep going for the full duration. **Required on any throw that records an out**, otherwise ball and runner land together — a tie, and a tie goes to the runner. |
 | `move` | Moves fielders to new spots with no ball in flight |
@@ -112,6 +130,38 @@ The order is fixed for the life of one scenario attempt, so an option ruled out 
 keeps its letter instead of jumping around mid-question. **Try this play again** reshuffles, so the
 answer can't be memorised by position.
 
+## Scoring
+
+It is a quiz, so the score has to mean something.
+
+**Only a first-try answer counts as correct.** Getting there on the second guess counts as a miss,
+and so does having the answer revealed after two wrong guesses. The feedback says so rather than
+letting a second-guess win feel like a clean one.
+
+**A scenario is scored exactly once, on the first attempt, and that result is final for the run.**
+Replaying a play you already missed lets you find the right answer — it does not repair the score,
+and the feedback tells you as much. This matters more than it sounds: before it was enforced, one
+scenario could be banked as both 1 right *and* 1 wrong.
+
+All scoring goes through `recordScenarioResult()` in `app.js`, which refuses to fire twice for the
+same scenario id. **Never increment `state.score` anywhere else** — that guard is the only thing
+keeping right + wrong equal to the number of scenarios actually attempted.
+
+The topbar shows `N right · N wrong` and a `3 of 16` progress chip. Switching position resets both.
+
+## The results screen
+
+Finishing the last scenario in a position shows a results screen rather than dumping you back at the
+picker: the score, a progress bar, right/missed tallies, and every missed play listed by name with its
+situation. A clean run gets a "Perfect" message instead of an empty list.
+
+Three ways out: **Retry the ones you missed** (a fresh run over only those scenarios, with a fresh
+scoreboard — a deliberate second attempt, not a repair of the first), **Start this position over**, or
+**Pick another position**.
+
+Switching position mid-quiz with the topbar button skips the results screen entirely — you abandoned
+the run rather than finishing it.
+
 ## Replaying the animation
 
 The play develops in a couple of seconds, which is easy to miss while reading the situation panel.
@@ -130,4 +180,5 @@ there is genuinely nothing to rewatch — a question asked before the first pitc
 `hasSomethingToReplay()` in `app.js` decides by looking for any earlier `ball`, `throw` or `move` step.
 
 That is separate from **Try this play again** in the side panel, which restarts the scenario from
-scratch and asks the question over.
+scratch and asks the question over. That one is for finding the right answer on a play you missed —
+it cannot change your score, which is already settled (see **Scoring** above).

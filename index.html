@@ -51,8 +51,8 @@
   </div>
   <div class="topbar-right">
     <div class="score" id="score" hidden>
-      <span class="score-label">Correct</span>
-      <span class="score-value"><b id="score-correct">0</b> / <span id="score-asked">0</span></span>
+      <span class="score-label">Score</span>
+      <span class="score-value"><b id="score-correct">0</b> right &middot; <span id="score-wrong">0</span> wrong</span>
     </div>
     <button class="btn btn-switch" id="btn-change-position" hidden
             title="Pick a different position — you can switch any time">
@@ -82,6 +82,7 @@
       <div class="field-header">
         <div>
           <span class="chip chip-pos" id="chip-position">2B</span>
+          <span class="chip chip-progress" id="chip-progress"></span>
           <span class="scenario-title" id="scenario-title"></span>
         </div>
         <div class="field-header-right">
@@ -195,6 +196,40 @@
         <button class="btn btn-ghost" id="btn-replay" hidden>Try this play again</button>
       </div>
     </aside>
+  </div>
+</main>
+
+<!-- ============ SCREEN 3: RESULTS ============ -->
+<main id="screen-summary" class="screen" hidden>
+  <div class="summary">
+    <p class="summary-eyebrow" id="summary-eyebrow"></p>
+    <h2 class="summary-headline" id="summary-headline"></h2>
+
+    <div class="summary-bar"><div class="summary-bar-fill" id="summary-bar-fill"></div></div>
+
+    <div class="summary-tallies">
+      <div class="tally tally-right">
+        <b id="summary-correct">0</b><span>right first try</span>
+      </div>
+      <div class="tally tally-wrong">
+        <b id="summary-wrong">0</b><span>missed</span>
+      </div>
+    </div>
+
+    <p class="summary-perfect" id="summary-perfect" hidden>
+      Perfect &mdash; you got every one on the first try.
+    </p>
+
+    <div class="summary-missed" id="summary-missed" hidden>
+      <h3>Plays to work on</h3>
+      <ul id="summary-missed-list"></ul>
+    </div>
+
+    <div class="summary-actions">
+      <button class="btn btn-primary" id="btn-retry-missed" hidden>Retry the ones you missed</button>
+      <button class="btn" id="btn-retry-position">Start this position over</button>
+      <button class="btn btn-ghost" id="btn-summary-positions">Pick another position</button>
+    </div>
   </div>
 </main>
 
