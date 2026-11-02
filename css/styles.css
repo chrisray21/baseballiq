@@ -517,3 +517,124 @@ body.has-action-bar { padding-bottom: 78px; }
   .topbar { padding: 14px 16px; }
   .screen { padding: 22px 16px; }
 }
+
+/* ---------------- quiz progress chip ---------------- */
+
+.chip-progress {
+  background: #1b2735;
+  color: var(--text-dim);
+  border-color: #35485c;
+  margin-left: 8px;
+}
+
+/* ---------------- results screen ---------------- */
+
+.summary {
+  max-width: 620px;
+  margin: 20px auto 0;
+  text-align: center;
+}
+
+.summary-eyebrow {
+  margin: 0 0 6px;
+  font-size: 11.5px;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.summary-headline {
+  margin: 0 0 22px;
+  font-size: 30px;
+  line-height: 1.25;
+}
+
+/* how much of the position they got right, at a glance */
+.summary-bar {
+  height: 10px;
+  border-radius: 999px;
+  background: #1b2735;
+  border: 1px solid var(--line);
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+.summary-bar-fill {
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--correct), #5fe08c);
+  transition: width .6s ease;
+}
+
+.summary-tallies {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.tally {
+  flex: 1 1 0;
+  max-width: 190px;
+  padding: 16px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, var(--bg-raised), #111922);
+}
+.tally b { display: block; font-size: 30px; line-height: 1.1; }
+.tally span { display: block; margin-top: 4px; font-size: 12px; color: var(--text-faint); }
+.tally-right b { color: var(--correct); }
+.tally-right { border-color: rgba(53,196,106,.35); }
+.tally-wrong b { color: var(--wrong); }
+.tally-wrong { border-color: rgba(224,92,75,.3); }
+
+.summary-perfect {
+  margin: 0 0 20px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  background: rgba(53,196,106,.12);
+  border: 1px solid rgba(53,196,106,.4);
+  color: #cdf6dc;
+  font-size: 14.5px;
+}
+
+.summary-missed {
+  text-align: left;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, var(--bg-raised), #111922);
+  padding: 16px 20px;
+  margin-bottom: 22px;
+}
+.summary-missed h3 {
+  margin: 0 0 10px;
+  font-size: 12px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.summary-missed ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.summary-missed li {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  font-size: 14px;
+  color: var(--text-dim);
+  padding-bottom: 8px;
+  border-bottom: 1px dashed #232f3c;
+}
+.summary-missed li:last-child { border-bottom: none; padding-bottom: 0; }
+.summary-missed li .miss-mark { color: var(--wrong); font-weight: 700; flex: none; }
+.summary-missed li .miss-title { color: var(--text); }
+.summary-missed li .miss-sit { color: var(--text-faint); font-size: 12.5px; }
+
+.summary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+@media (max-width: 560px) {
+  .summary-tallies { flex-direction: column; align-items: stretch; }
+  .tally { max-width: none; }
+}
