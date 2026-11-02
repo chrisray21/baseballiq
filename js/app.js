@@ -15,7 +15,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const scoreBox       = document.getElementById('score');
   const scoreCorrectEl = document.getElementById('score-correct');
-  const scoreAskedEl   = document.getElementById('score-asked');
+  const scoreWrongEl   = document.getElementById('score-wrong');
+  const chipProgress   = document.getElementById('chip-progress');
+
+  const screenSummary  = document.getElementById('screen-summary');
+  const summaryEyebrow = document.getElementById('summary-eyebrow');
+  const summaryHeadline= document.getElementById('summary-headline');
+  const summaryBarFill = document.getElementById('summary-bar-fill');
+  const summaryCorrect = document.getElementById('summary-correct');
+  const summaryWrong   = document.getElementById('summary-wrong');
+  const summaryPerfect = document.getElementById('summary-perfect');
+  const summaryMissed  = document.getElementById('summary-missed');
+  const summaryMissedList = document.getElementById('summary-missed-list');
+  const btnRetryMissed = document.getElementById('btn-retry-missed');
+  const btnRetryPosition = document.getElementById('btn-retry-position');
+  const btnSummaryPositions = document.getElementById('btn-summary-positions');
   const btnChangePos   = document.getElementById('btn-change-position');
 
   const chipPosition   = document.getElementById('chip-position');
@@ -49,7 +63,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const state = {
     list: [],
     index: 0,
-    score: { correct: 0, asked: 0 },
+    positionCode: null,
+    /* Quiz scoring. A question only counts as correct when it is right
+       on the FIRST try — getting there after a wrong guess counts as
+       wrong, same as having the answer revealed. */
+    score: { correct: 0, wrong: 0 },
+    results: {},          // scenario id -> { scenario, correct }
+    scenarioClean: true,  // has the current scenario been answered first-try-perfect so far?
     scenario: null,
     steps: [],
     answered: {},        // stepIndex -> { chosen, correct }
@@ -123,12 +143,23 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function selectPosition(code) {
-    state.list = SCENARIOS.filter(s => s.position === code);
-    if (!state.list.length) return;
+    const list = SCENARIOS.filter(s => s.position === code);
+    if (!list.length) return;
+    state.positionCode = code;
+    startQuiz(list);
+  }
+
+  /* Starts a run through a set of scenarios with a fresh scoreboard.
+     Used for a whole position, for restarting one, and for the
+     retry-only-the-missed-ones run off the results screen. */
+  function startQuiz(list) {
+    state.list = list;
     state.index = 0;
-    state.score = { correct: 0, asked: 0 };
+    state.score = { correct: 0, wrong: 0 };
+    state.results = {};
     updateScoreUI();
     screenSelect.hidden = true;
+    screenSummary.hidden = true;
     screenPlay.hidden = false;
     scoreBox.hidden = false;
     btnChangePos.hidden = false;
@@ -145,28 +176,13 @@ document.addEventListener('DOMContentLoaded', () => {
      Used both by the Change position button and by finishing the last
      scenario in a position. */
   function showPositionPicker() {
-    state.runToken++;             // cancels any timeline still running
-    state.pausedAt = -1;
-    state.pendingQuestion = null;
-    state.animating = false;
+    tearDownPlayScreen();
 
     screenPlay.hidden = true;
+    screenSummary.hidden = true;
     screenSelect.hidden = false;
     scoreBox.hidden = true;
     btnChangePos.hidden = true;
-
-    panelActions.classList.remove('is-floating');
-    document.body.classList.remove('has-action-bar');
-    questionCard.hidden = true;
-    outcomeCard.hidden = true;
-    feedbackEl.hidden = true;
-    chipPaused.hidden = true;
-    btnNext.hidden = true;
-    btnTryAgain.hidden = true;
-    btnReplayAnim.hidden = true;
-    setReplayRunning(false);
-    fieldFrame.classList.remove('dimmed');
-    fieldCaption.textContent = ' ';
 
     buildPositionGrid();
   }
@@ -175,7 +191,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function updateScoreUI() {
     scoreCorrectEl.textContent = state.score.correct;
-    scoreAskedEl.textContent = state.score.asked;
+    scoreWrongEl.textContent = state.score.wrong;
+  }
+
+  /* Has the current scenario already been scored in this run? If so it
+     is settled for good — replaying it must not change the tally. */
+  function alreadyScored() {
+    return !!(state.scenario && state.results[state.scenario.id]);
+  }
+
+  /* The ONLY place the score changes. A scenario is scored exactly once,
+     on the first attempt, and the result is final for the rest of the
+     run. Without this, "Try this play again" let a player re-answer a
+     scenario they had already missed and bank a second, contradictory
+     result — one scenario showing up as both 1 right and 1 wrong. */
+  function recordScenarioResult(correct) {
+    const sc = state.scenario;
+    if (!sc || state.results[sc.id]) return;
+    state.results[sc.id] = { scenario: sc, correct: correct };
+    if (correct) state.score.correct++;
+    else state.score.wrong++;
+    updateScoreUI();
   }
 
   /* ---------------- situation panel ---------------- */
@@ -214,9 +250,11 @@ document.addEventListener('DOMContentLoaded', () => {
     state.pausedAt = -1;
     state.pendingQuestion = null;
     state.runToken++;
+    state.scenarioClean = true;   // nothing missed in this scenario yet
 
     Field.reset(scenario);
     chipPosition.textContent = scenario.position;
+    chipProgress.textContent = (state.index + 1) + ' of ' + state.list.length;
     scenarioTitle.textContent = scenario.title || '';
     renderSituation(scenario);
 
@@ -290,7 +328,6 @@ document.addEventListener('DOMContentLoaded', () => {
       optionsBox.innerHTML = '';
 
       const qState = { wrongIdxs: [], done: false };
-      let askedCounted = false;
 
       /* `origIdx` indexes step.options as authored; `displayIdx` is the
          on-screen slot after shuffling. Correctness and the ruled-out
@@ -328,16 +365,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
       function onPick(idx) {
         if (token !== state.runToken) return;
-        if (!askedCounted) { state.score.asked++; askedCounted = true; updateScoreUI(); }
 
         if (idx === step.answer) {
+          const firstTry = qState.wrongIdxs.length === 0;
+          const settled = alreadyScored();
           qState.done = true;
           render();
           feedbackEl.hidden = false;
           feedbackEl.className = 'feedback good';
-          feedbackEl.textContent = 'Yes — that’s the right read.';
-          state.score.correct++;
-          updateScoreUI();
+          feedbackEl.textContent = settled
+            ? 'That’s the right answer. This play is already marked as a miss, but now you know it.'
+            : firstTry
+              ? 'Yes — that’s the right read.'
+              : 'That’s the right answer — but it counts as a miss, because the first guess was wrong.';
+          if (!firstTry) state.scenarioClean = false;
+          recordScenarioResult(firstTry);
           state.answered[stepIndex] = { chosen: idx, correct: true };
           try {
             const rect = optionsBox.getBoundingClientRect();
@@ -360,6 +402,8 @@ document.addEventListener('DOMContentLoaded', () => {
           feedbackEl.hidden = false;
           feedbackEl.className = 'feedback reveal';
           feedbackEl.textContent = step.explanation || 'Here’s the right call on this one.';
+          state.scenarioClean = false;
+          recordScenarioResult(false);
           state.answered[stepIndex] = { chosen: idx, correct: false };
           state.pendingQuestion = null;
           setTimeout(resolve, 1800);
@@ -383,9 +427,14 @@ document.addEventListener('DOMContentLoaded', () => {
     outcomeCoach.textContent = step.coach || '';
     Field.flashFielders(step.flash);
 
+    /* The result was already banked the moment the question was
+       answered (see recordScenarioResult), so there is nothing to
+       record here — reaching the result screen a second time via
+       "Try this play again" must not change anything. */
+
     const isLast = state.index >= state.list.length - 1;
     btnNext.hidden = false;
-    btnNext.textContent = isLast ? 'Back to positions' : 'Next scenario';
+    btnNext.textContent = isLast ? 'See your results' : 'Next scenario';
     btnTryAgain.hidden = false;
 
     panelActions.classList.add('is-floating');
@@ -398,13 +447,89 @@ document.addEventListener('DOMContentLoaded', () => {
       state.index++;
       loadScenario(state.list[state.index]);
     } else {
-      showPositionPicker();
+      showSummary();
     }
   });
 
   btnTryAgain.addEventListener('click', () => {
     loadScenario(state.scenario);
   });
+
+  /* ---------------- results screen ---------------- */
+
+  function tearDownPlayScreen() {
+    state.runToken++;
+    state.pausedAt = -1;
+    state.pendingQuestion = null;
+    state.animating = false;
+
+    panelActions.classList.remove('is-floating');
+    document.body.classList.remove('has-action-bar');
+    questionCard.hidden = true;
+    outcomeCard.hidden = true;
+    feedbackEl.hidden = true;
+    chipPaused.hidden = true;
+    btnNext.hidden = true;
+    btnTryAgain.hidden = true;
+    btnReplayAnim.hidden = true;
+    setReplayRunning(false);
+    fieldFrame.classList.remove('dimmed');
+    fieldCaption.textContent = ' ';
+  }
+
+  function showSummary() {
+    tearDownPlayScreen();
+    screenPlay.hidden = true;
+    screenSelect.hidden = true;
+    screenSummary.hidden = false;
+    scoreBox.hidden = true;
+    btnChangePos.hidden = true;
+
+    const total = state.list.length;
+    const right = state.list.filter(s => state.results[s.id] && state.results[s.id].correct).length;
+    const missed = state.list.filter(s => !state.results[s.id] || !state.results[s.id].correct);
+
+    const posLabel = (POSITIONS.find(p => p.code === state.positionCode) || {}).label || '';
+    summaryEyebrow.textContent = posLabel;
+    summaryHeadline.textContent = 'You got ' + right + ' of ' + total + ' right';
+    summaryCorrect.textContent = right;
+    summaryWrong.textContent = missed.length;
+    summaryBarFill.style.width = total ? Math.round((right / total) * 100) + '%' : '0%';
+
+    summaryPerfect.hidden = missed.length > 0;
+    summaryMissed.hidden = missed.length === 0;
+    btnRetryMissed.hidden = missed.length === 0;
+    btnRetryMissed.textContent = missed.length === 1
+      ? 'Retry the one you missed'
+      : 'Retry the ' + missed.length + ' you missed';
+
+    summaryMissedList.innerHTML = '';
+    missed.forEach(s => {
+      const li = document.createElement('li');
+      li.innerHTML =
+        '<span class="miss-mark">&#10007;</span>' +
+        '<span><span class="miss-title">' + s.title + '</span><br>' +
+        '<span class="miss-sit">' + describeSituation(s.situation) + '</span></span>';
+      summaryMissedList.appendChild(li);
+    });
+  }
+
+  function describeSituation(sit) {
+    if (!sit) return '';
+    const outs = sit.outs === 1 ? '1 out' : sit.outs + ' outs';
+    return outs + ', ' + formatRunners(sit.runners).toLowerCase();
+  }
+
+  btnRetryMissed.addEventListener('click', () => {
+    const missed = state.list.filter(s => !state.results[s.id] || !state.results[s.id].correct);
+    if (missed.length) startQuiz(missed);
+  });
+
+  btnRetryPosition.addEventListener('click', () => {
+    if (state.positionCode) selectPosition(state.positionCode);
+  });
+
+  btnSummaryPositions.addEventListener('click', showPositionPicker);
 
   /* ---------------- replay animation ---------------- */
 
