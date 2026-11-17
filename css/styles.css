@@ -638,3 +638,93 @@ body.has-action-bar { padding-bottom: 78px; }
   .summary-tallies { flex-direction: column; align-items: stretch; }
   .tally { max-width: none; }
 }
+
+/* ---------------- player badge in the topbar ---------------- */
+
+.player {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.2;
+  padding-right: 14px;
+  border-right: 1px solid var(--line);
+}
+.player-name { font-size: 14px; font-weight: 600; color: var(--text); }
+.player-switch {
+  margin-top: 2px;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 11px;
+  color: var(--text-faint);
+  cursor: pointer;
+  text-decoration: underline;
+}
+.player-switch:hover { color: var(--accent); }
+
+/* ---------------- who's playing screen ---------------- */
+
+.namecard {
+  max-width: 460px;
+  margin: 40px auto 0;
+  text-align: center;
+  padding: 30px 28px 24px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, var(--bg-raised), #111922);
+  box-shadow: var(--shadow);
+}
+.namecard h2 { margin: 0 0 8px; font-size: 25px; }
+.namecard-sub { margin: 0 0 24px; color: var(--text-dim); font-size: 14.5px; line-height: 1.55; }
+
+.namecard-fields { display: flex; gap: 12px; text-align: left; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field-first { flex: 1 1 auto; }
+.field-initial { flex: 0 0 92px; }
+.field span {
+  font-size: 11px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.field input {
+  font-family: inherit;
+  font-size: 16px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: #0f1720;
+  color: var(--text);
+}
+.field input::placeholder { color: #44566a; }
+.field input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(78,168,222,.18);
+}
+.field-initial input { text-align: center; text-transform: uppercase; }
+
+.namecard-error {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(224,92,75,.12);
+  border: 1px solid rgba(224,92,75,.4);
+  color: #ffcfc7;
+  font-size: 13.5px;
+}
+
+.btn-start { width: 100%; margin-top: 18px; padding: 13px 18px; font-size: 15px; }
+
+.namecard-note {
+  margin: 18px 0 0;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+@media (max-width: 420px) {
+  .namecard-fields { flex-direction: column; }
+  .field-initial { flex: 1 1 auto; }
+  .field-initial input { text-align: left; }
+}
