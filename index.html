@@ -50,6 +50,11 @@
     </div>
   </div>
   <div class="topbar-right">
+    <div class="player" id="player-badge" hidden>
+      <span class="player-name" id="player-name"></span>
+      <button class="player-switch" id="btn-switch-player" type="button"
+              title="Not you? Switch player">Not you?</button>
+    </div>
     <div class="score" id="score" hidden>
       <span class="score-label">Score</span>
       <span class="score-value"><b id="score-correct">0</b> right &middot; <span id="score-wrong">0</span> wrong</span>
@@ -62,8 +67,35 @@
   </div>
 </header>
 
+<!-- ============ SCREEN 0: WHO IS PLAYING ============ -->
+<main id="screen-name" class="screen" hidden>
+  <div class="namecard">
+    <h2>Who&rsquo;s drilling today?</h2>
+    <p class="namecard-sub">So your coach can see who&rsquo;s been putting the work in.</p>
+
+    <form class="namecard-form" id="name-form">
+      <div class="namecard-fields">
+        <label class="field field-first">
+          <span>First name</span>
+          <input type="text" id="input-first-name" autocomplete="given-name"
+                 maxlength="20" placeholder="Jake" required>
+        </label>
+        <label class="field field-initial">
+          <span>Last initial</span>
+          <input type="text" id="input-last-initial" autocomplete="off"
+                 maxlength="1" placeholder="M">
+        </label>
+      </div>
+      <p class="namecard-error" id="name-error" hidden></p>
+      <button class="btn btn-primary btn-start" type="submit">Start drilling</button>
+    </form>
+
+    <p class="namecard-note">We only keep your first name and last initial.</p>
+  </div>
+</main>
+
 <!-- ============ SCREEN 1: POSITION PICKER ============ -->
-<main id="screen-select" class="screen">
+<main id="screen-select" class="screen" hidden>
   <div class="select-intro">
     <h2>Pick the position you want to master</h2>
     <p>You&rsquo;ll watch the play develop, then get stopped mid-action and asked what that fielder is
@@ -238,6 +270,7 @@
 </footer>
 
 <!-- shared field data first, then one scenario file per position -->
+<script src="js/reporting.js"></script>
 <script src="js/field-data.js"></script>
 <script src="js/scenarios-2b.js"></script>
 <script src="js/scenarios-ss.js"></script>
