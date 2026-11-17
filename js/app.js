@@ -18,6 +18,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const scoreWrongEl   = document.getElementById('score-wrong');
   const chipProgress   = document.getElementById('chip-progress');
 
+  const screenName     = document.getElementById('screen-name');
+  const nameForm       = document.getElementById('name-form');
+  const inputFirstName = document.getElementById('input-first-name');
+  const inputLastInitial = document.getElementById('input-last-initial');
+  const nameError      = document.getElementById('name-error');
+  const playerBadge    = document.getElementById('player-badge');
+  const playerNameEl   = document.getElementById('player-name');
+  const btnSwitchPlayer = document.getElementById('btn-switch-player');
+
   const screenSummary  = document.getElementById('screen-summary');
   const summaryEyebrow = document.getElementById('summary-eyebrow');
   const summaryHeadline= document.getElementById('summary-headline');
@@ -64,6 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
     list: [],
     index: 0,
     positionCode: null,
+    player: null,         // { firstName, lastInitial }
     /* Quiz scoring. A question only counts as correct when it is right
        on the FIRST try — getting there after a wrong guess counts as
        wrong, same as having the answer revealed. */
@@ -115,6 +125,64 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     return false;
   }
+
+  /* ---------------- who's playing ---------------- */
+
+  function showNameScreen() {
+    screenName.hidden = false;
+    screenSelect.hidden = true;
+    screenPlay.hidden = true;
+    screenSummary.hidden = true;
+    playerBadge.hidden = true;
+    scoreBox.hidden = true;
+    btnChangePos.hidden = true;
+    nameError.hidden = true;
+
+    if (state.player) {
+      inputFirstName.value = state.player.firstName || '';
+      inputLastInitial.value = state.player.lastInitial || '';
+    }
+    try { inputFirstName.focus(); } catch (e) { /* focus is a nicety */ }
+  }
+
+  function renderPlayerBadge() {
+    if (!state.player) { playerBadge.hidden = true; return; }
+    playerNameEl.textContent = Reporting.displayName(state.player);
+    playerBadge.hidden = false;
+  }
+
+  nameForm.addEventListener('submit', e => {
+    e.preventDefault();
+    const first = inputFirstName.value.trim();
+    const initial = inputLastInitial.value.trim().toUpperCase().slice(0, 1);
+
+    if (!first) {
+      nameError.textContent = 'Please type your first name so your coach knows who you are.';
+      nameError.hidden = false;
+      inputFirstName.focus();
+      return;
+    }
+    if (initial && !/^[A-Z]$/.test(initial)) {
+      nameError.textContent = 'Last initial should be a single letter.';
+      nameError.hidden = false;
+      inputLastInitial.focus();
+      return;
+    }
+
+    nameError.hidden = true;
+    state.player = { firstName: first, lastInitial: initial };
+    Reporting.savePlayer(state.player);
+    renderPlayerBadge();
+    showPositionPicker();
+  });
+
+  btnSwitchPlayer.addEventListener('click', () => {
+    Reporting.clearPlayer();
+    state.player = null;
+    inputFirstName.value = '';
+    inputLastInitial.value = '';
+    showNameScreen();
+  });
 
   /* ---------------- position picker ---------------- */
 
@@ -180,9 +248,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     screenPlay.hidden = true;
     screenSummary.hidden = true;
+    screenName.hidden = true;
     screenSelect.hidden = false;
     scoreBox.hidden = true;
     btnChangePos.hidden = true;
+    renderPlayerBadge();
 
     buildPositionGrid();
   }
@@ -481,6 +551,7 @@ document.addEventListener('DOMContentLoaded', () => {
     tearDownPlayScreen();
     screenPlay.hidden = true;
     screenSelect.hidden = true;
+    screenName.hidden = true;
     screenSummary.hidden = false;
     scoreBox.hidden = true;
     btnChangePos.hidden = true;
@@ -488,6 +559,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const total = state.list.length;
     const right = state.list.filter(s => state.results[s.id] && state.results[s.id].correct).length;
     const missed = state.list.filter(s => !state.results[s.id] || !state.results[s.id].correct);
+
+    /* Report the finished position. Deliberately after the screen is
+       built, and never awaited — if the send fails the player still
+       sees exactly the same results. */
+    if (state.player) {
+      Reporting.sendResult({
+        firstName:   state.player.firstName,
+        lastInitial: state.player.lastInitial,
+        position:    (POSITIONS.find(p => p.code === state.positionCode) || {}).label || state.positionCode,
+        right:       right,
+        wrong:       missed.length,
+        missed:      missed.map(s => s.title)
+      });
+    }
 
     const posLabel = (POSITIONS.find(p => p.code === state.positionCode) || {}).label || '';
     summaryEyebrow.textContent = posLabel;
@@ -639,4 +724,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   Field.init();
   buildPositionGrid();
+
+  /* A returning player on the same device skips straight to the picker;
+     a new one gets asked who they are first. */
+  state.player = Reporting.loadPlayer();
+  if (state.player) {
+    renderPlayerBadge();
+    showPositionPicker();
+  } else {
+    showNameScreen();
+  }
 });
